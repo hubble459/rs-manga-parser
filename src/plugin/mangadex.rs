@@ -187,7 +187,7 @@ impl Parser for MangaDex {
                 .map(|a| a.unwrap().to_owned())
                 .collect(),
             chapters,
-            ongoing: manga.data.attributes.status == MangaStatus::Ongoing,
+            is_ongoing: manga.data.attributes.status == MangaStatus::Ongoing,
         })
     }
     async fn images(&self, url: &Url) -> Result<Vec<Url>> {

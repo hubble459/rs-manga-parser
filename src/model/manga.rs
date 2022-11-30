@@ -6,7 +6,7 @@ pub struct Manga {
     pub title: String,
     pub description: String,
     pub cover: Option<reqwest::Url>,
-    pub ongoing: bool,
+    pub is_ongoing: bool,
     pub genres: Vec<String>,
     pub authors: Vec<String>,
     pub alt_titles: Vec<String>,

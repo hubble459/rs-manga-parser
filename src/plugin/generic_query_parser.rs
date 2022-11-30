@@ -177,7 +177,7 @@ pub trait IGenericQueryParser: Parser {
                     title: self.normalize_title(self.title(&doc_loc)?.as_str()),
                     description: self.description(&doc_loc)?.trim().to_owned(),
                     cover: self.cover(&doc_loc),
-                    ongoing: self.ongoing(&doc_loc),
+                    is_ongoing: self.ongoing(&doc_loc),
                     genres: self.genres(&doc_loc),
                     authors: self.authors(&doc_loc),
                     alt_titles: self.alt_titles(&doc_loc),

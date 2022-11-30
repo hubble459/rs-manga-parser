@@ -140,7 +140,7 @@ async fn assert_manga(manga: Manga, strictness: u8) {
     assert!(!manga.title.is_empty(), "Title is empty");
     assert!(!manga.description.is_empty(), "Description is empty");
     assert_ne!(manga.description, "No description", "Description is empty");
-    assert!(manga.ongoing, "Manga is not ongoing");
+    assert!(manga.is_ongoing, "Manga is not ongoing");
     assert!(manga.url.has_host(), "Url is missing host");
     if strictness & 0b100 == 0b100 {
         assert!(!manga.genres.is_empty(), "Missing genres");
