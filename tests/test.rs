@@ -102,7 +102,7 @@ manga_tests! {
     manga_rock_team: "https://mangarockteam.com/manga/above-ten-thousand-people";
     manga_zuki_team: "https://mangazukiteam.com/manga/shinjiteita-nakama-tachi-ni-dungeon/";
     az_manhwa: "https://azmanhwa.net/manga/hazure-skill-ga-cha-de-tsuiho-sareta-ore-ha-waga-mama-osananajimi-wo-zetsuen-shi-kakusei-suru-banno-chi-toss-kill-wo-get-shite-mezase-rakuraku-saikyo-slow-life";
-    top_manhua: "https://topmanhua.com/manga/lightning-degree/", 0b110;
+    top_manhua: "https://topmanhua.com/manhua/the-beginning-after-the-end/", 0b110;
     yaoi: "https://yaoi.mobi/manga/stack-overflow-raw-yaoi0003/", 0b100;
     manga_tx: "https://mangatx.com/manga/lightning-degree/";
 }
@@ -147,13 +147,18 @@ async fn assert_manga(manga: Manga, strictness: u8) {
     }
     if strictness & 0b010 == 0b010 {
         assert!(!manga.authors.is_empty(), "Missing authors");
+        println!("authors {:?}", manga.authors);
     }
     if strictness & 0b001 == 0b001 {
         assert!(!manga.alt_titles.is_empty(), "Missing alternative titles");
     }
     assert!(!manga.chapters.is_empty(), "Missing chapters");
+    let mut unique_urls = vec![];
     for chapter in manga.chapters.iter() {
         assert!(chapter.url.has_host(), "Chapter url is missing host");
+        let url = chapter.url.to_string();
+        assert!(!unique_urls.contains(&url), "Duplicate chapter url ({})", url);
+        unique_urls.push(url);
         if strictness & 0b1000 == 0b1000 {
             assert!(chapter.posted.is_some(), "Chapter {} is missing a posted date", chapter.number);
         }

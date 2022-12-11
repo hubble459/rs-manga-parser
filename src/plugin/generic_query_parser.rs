@@ -13,7 +13,7 @@ use reqwest::{RequestBuilder, Response, StatusCode, Url};
 pub type DocLoc = (Document, Url);
 
 lazy_static! {
-    static ref GENERIC_LIST_SPLITTER: Regex = Regex::new(r"[\s\n\r\t:;\-]*").unwrap();
+    static ref GENERIC_LIST_SPLITTER: Regex = Regex::new(r"[\s\n\r\t:;\-]+").unwrap();
     static ref NORMALIZE_TITLE_MANGA: Regex = RegexBuilder::new(r"\s*manga\s*")
         .case_insensitive(true)
         .build()
@@ -100,12 +100,18 @@ pub trait IGenericQueryParser: Parser {
 
         let mut chapter_number_fallback = elements.elements.len();
 
+        let mut unique_urls = vec![];
         for element in elements.elements.iter() {
             // Href
             let href = util::select_element_fallback(element, query.href, Some(element.clone()));
             let href = href.ok_or(ParseError::MissingChapterHref)?;
             let url = self.abs_url(url, &href, &href_attrs)?;
-
+            let url_string = url.to_string();
+            if unique_urls.contains(&url_string) {
+                continue;
+            } else {
+                unique_urls.push(url_string);
+            }
             // Title
             let title_element =
                 util::select_element_fallback(element, query.title, Some(href.clone()))
