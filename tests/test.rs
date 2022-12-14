@@ -142,12 +142,12 @@ async fn assert_manga(manga: Manga, strictness: u8) {
     assert_ne!(manga.description, "No description", "Description is empty");
     assert!(manga.is_ongoing, "Manga is not ongoing");
     assert!(manga.url.has_host(), "Url is missing host");
+    assert!(manga.cover.is_some(), "Manga is missing a cover");
     if strictness & 0b100 == 0b100 {
         assert!(!manga.genres.is_empty(), "Missing genres");
     }
     if strictness & 0b010 == 0b010 {
         assert!(!manga.authors.is_empty(), "Missing authors");
-        println!("authors {:?}", manga.authors);
     }
     if strictness & 0b001 == 0b001 {
         assert!(!manga.alt_titles.is_empty(), "Missing alternative titles");

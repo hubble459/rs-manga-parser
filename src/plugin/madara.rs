@@ -52,7 +52,7 @@ impl Madara {
                 title: "div.post-title h1",
                 description: Some("div.description-summary h3, div.summary__content p, div.dsct p, div.summary__content"),
                 is_ongoing: Some("div.summary-heading:has(h5:icontains(status)) + div"),
-                cover: Some("div.summary_image img.lazyloaded"),
+                cover: Some("div.summary_image img"),
                 cover_attrs: Some(vec!["data-src"]),
                 authors: Some("div.author-content > a"),
                 genres: Some("div.genres-content > a"),
