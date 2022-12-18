@@ -259,7 +259,7 @@ impl Parser for MangaDex {
                     .get(&mangadex_api::types::Language::English)
                     .unwrap_or(&"No title".to_owned())
                     .to_owned(),
-                posted: m.attributes.updated_at.as_ref().map(|date| *date.as_ref()),
+                posted: m.attributes.updated_at.as_ref().map(|date| (*date.as_ref())),
                 cover: m
                     .relationships
                     .clone()
