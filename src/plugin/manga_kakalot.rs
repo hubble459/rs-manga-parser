@@ -2,14 +2,12 @@ use regex::Regex;
 use reqwest::Url;
 
 use super::generic_query_parser::{DocLoc, GenericQueryParser, IGenericQueryParser};
-use crate::{
-    model::{
-        GenericQuery, GenericQueryImages, GenericQueryManga, GenericQueryMangaChapter,
-        GenericQuerySearch,
-    },
-    parse_error::{ParseError, Result},
-    util,
+use crate::model::{
+    GenericQuery, GenericQueryImages, GenericQueryManga, GenericQueryMangaChapter,
+    GenericQuerySearch,
 };
+use crate::parse_error::{ParseError, Result};
+use crate::util::{self, get_hostname};
 
 lazy_static! {
     static ref REGEX_SPECIAL_CHARACTERS: Regex = Regex::new(r"\W").unwrap();
@@ -27,11 +25,11 @@ impl MangaKakalot {
             manga: GenericQueryManga {
                 title: "h1",
                 description: Some("#noidungm, #panel-story-info-description, #example2, div:has(> h2:icontains(sum)), div:has(> h3:icontains(desc))"),
-                cover: Some("#primaryimage, div.manga-info-pic > img"),
-                cover_attrs: Some(vec!["data-src", "src"]),
+                cover: Some("meta[property=og:image], #primaryimage, div.manga-info-pic > img, span.info-image > img"),
+                cover_attrs: Some(vec!["content", "data-src", "src"]),
                 is_ongoing: Some("li:icontains(status), td:icontains(status) + td"),
-                genres: Some("li:icontains(genre) > a, td:icontains(genre) + td a"),
-                alt_titles: Some("h2:icontains(alt), h2.story-alternative, td:icontains(alt) + td"),
+                genres: Some("li:icontains(genre) > a, td:icontains(genre) + td a, p.description-update span:icontains(genre) ~ a[href*=mangas]"),
+                alt_titles: Some("h2:icontains(alt), h2.story-alternative, td:icontains(alt) + td, p.description-update"),
                 authors: Some("li:icontains(author) > a, td:icontains(author) + td a"),
                 chapter: GenericQueryMangaChapter {
                     base: "div.chapter-list div.row, div.chapter h4, ul.row-content-chapter li",
@@ -90,7 +88,7 @@ impl IGenericQueryParser for MangaKakalot {
     fn get_images(&self, (doc, loc): DocLoc) -> Result<Vec<Url>> {
         let hostname = util::get_hostname(&loc)?;
 
-        if hostname == "mangabat.best" {
+        if hostname == "mangabat.best" || hostname == "hubmanga.com" {
             let element =
                 util::select_first(&doc, "#arraydata").ok_or(ParseError::MissingImages)?;
             let images = element.text().ok_or(ParseError::MissingImages)?;
@@ -98,7 +96,7 @@ impl IGenericQueryParser for MangaKakalot {
             return images
                 .split(",")
                 .map(|url| Url::parse(url).map_err(|_| ParseError::MissingImages))
-                .collect::<core::result::Result<Vec<Url>, _>>();
+                .collect::<core::result::Result<Vec<Url>, ParseError>>();
         }
 
         self.parser.get_images((doc, loc))
@@ -116,7 +114,11 @@ impl IGenericQueryParser for MangaKakalot {
             _ => {}
         }
 
-        let url = self.parser.parse_search_url(hostname, &self.parse_keywords(hostname, &keywords), &path);
+        let url = self.parser.parse_search_url(
+            hostname,
+            &self.parse_keywords(hostname, &keywords),
+            &path,
+        );
 
         url.map(|mut url| {
             match hostname {
@@ -130,5 +132,24 @@ impl IGenericQueryParser for MangaKakalot {
             }
             url
         })
+    }
+
+    fn alt_titles(&self, doc_loc: &DocLoc) -> Vec<String> {
+        let loc = &doc_loc.1;
+        let hostname = get_hostname(loc).unwrap_or_default();
+        if hostname == "mangabat.best" {
+            return vec![];
+        }
+
+        self.parser.alt_titles(doc_loc)
+    }
+
+    fn authors(&self, doc_loc: &DocLoc) -> Vec<String> {
+        let loc = &doc_loc.1;
+        let hostname = get_hostname(loc).unwrap_or_default();
+        if hostname == "mangabat.best" {
+            return vec![];
+        }
+        self.parser.authors(doc_loc)
     }
 }

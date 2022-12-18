@@ -1,23 +1,31 @@
 use std::time::Duration;
 
-use crate::{
-    model::{Chapter, GenericQuery, GenericQuerySearch, Manga, SearchManga},
-    parse_error::{ParseError, Result},
-    parser::Parser,
-    util,
-};
 use crabquery::{Document, Element, Elements};
 use regex::{Regex, RegexBuilder};
 use reqwest::{RequestBuilder, Response, StatusCode, Url};
 
+use crate::model::{Chapter, GenericQuery, GenericQuerySearch, Manga, SearchManga};
+use crate::parse_error::{ParseError, Result};
+use crate::parser::Parser;
+use crate::util;
+
 pub type DocLoc = (Document, Url);
 
 lazy_static! {
-    static ref GENERIC_LIST_SPLITTER: Regex = Regex::new(r"[\s\n\r\t:;\-]+").unwrap();
+    static ref GENERIC_LIST_SPLITTER: Regex = Regex::new(r"[\n\r\t:;\-]+").unwrap();
+    static ref GENERIC_LIST_CLEANER: Regex = RegexBuilder::new(r"(alternative(\stitle)?|author|genre)(\(?s\)?)?")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
     static ref NORMALIZE_TITLE_MANGA: Regex = RegexBuilder::new(r"\s*manga\s*")
         .case_insensitive(true)
         .build()
         .unwrap();
+}
+
+fn clean_leading(text: &str) -> Option<String> {
+    let text = GENERIC_LIST_CLEANER.replace_all(text.trim(), "").to_string();
+    return if text.is_empty() { None } else { Some(text) };
 }
 
 #[async_trait::async_trait]
@@ -27,18 +35,17 @@ pub trait IGenericQueryParser: Parser {
             let elements: Elements = util::select(doc, query).into();
             if let Some(attr) = attr {
                 if let Some(text) = elements.attr(attr) {
-                    return text.split("\n").map(|t| String::from(t.trim())).collect();
+                    return text.split("\n").filter_map(clean_leading).collect();
                 }
-            } else {
-                if let Some(text) = elements.text() {
-                    if elements.elements.len() > 1 {
-                        return text.split("\n").map(|t| String::from(t.trim())).collect();
-                    } else {
-                        return GENERIC_LIST_SPLITTER
-                            .split(&text)
-                            .map(|t| String::from(t.trim()))
-                            .collect();
-                    }
+            }
+            if let Some(text) = elements.all_text() {
+                if elements.elements.len() > 1 {
+                    return text.split("\n").filter_map(clean_leading).collect();
+                } else {
+                    return GENERIC_LIST_SPLITTER
+                        .split(&text)
+                        .filter_map(clean_leading)
+                        .collect();
                 }
             }
         }
@@ -222,7 +229,10 @@ pub trait IGenericQueryParser: Parser {
     }
 
     fn normalize_title(&self, title: &str) -> String {
-        NORMALIZE_TITLE_MANGA.replace_all(title, "").trim().to_owned()
+        NORMALIZE_TITLE_MANGA
+            .replace_all(title, "")
+            .trim()
+            .to_owned()
     }
 
     fn parse_keywords(&self, _hostname: &str, keywords: &str) -> String {
@@ -384,7 +394,7 @@ pub trait IGenericQueryParser: Parser {
             return Err(ParseError::MissingQuery("description"));
         }
     }
-    fn cover(&self, (doc, _): &DocLoc) -> Option<Url> {
+    fn cover(&self, (doc, location): &DocLoc) -> Option<Url> {
         let query = self.get_query();
 
         if let Some(cover_query) = query.manga.cover {
@@ -393,8 +403,9 @@ pub trait IGenericQueryParser: Parser {
             let attrs =
                 util::merge_vec_with_default(&query.manga.cover_attrs, vec!["src", "data-src"]);
 
-            if let Some(cover) = &elements.attrs(attrs) {
-                if let Ok(url) = Url::parse(cover) {
+            for element in elements.elements.into_iter() {
+                let url = self.abs_url(location, &element, &attrs);
+                if let Ok(url) = url {
                     return Some(url);
                 }
             }

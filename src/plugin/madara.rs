@@ -4,7 +4,7 @@ use regex::Regex;
 use reqwest::{Client, Url};
 use serde::Deserialize;
 
-use super::generic_query_parser::{GenericQueryParser, IGenericQueryParser};
+use super::generic_query_parser::{GenericQueryParser, IGenericQueryParser, DocLoc};
 
 use crate::{
     model::{
@@ -52,8 +52,8 @@ impl Madara {
                 title: "div.post-title h1",
                 description: Some("div.description-summary h3, div.summary__content p, div.dsct p, div.summary__content"),
                 is_ongoing: Some("div.summary-heading:has(h5:icontains(status)) + div"),
-                cover: Some("div.summary_image img"),
-                cover_attrs: Some(vec!["data-src"]),
+                cover: Some("meta[property=og:image], div.summary_image img"),
+                cover_attrs: Some(vec!["content", "data-lazy-src", "data-src"]),
                 authors: Some("div.author-content > a"),
                 genres: Some("div.genres-content > a"),
                 alt_titles: Some("div.summary-heading:has(h5:icontains(alt)) + div"),
@@ -114,6 +114,7 @@ impl Madara {
                 "topmanhua.com",
                 "yaoi.mobi",
                 "zinmanga.com",
+                "hubmanga.com"
             ],
             ..Default::default()
         };
@@ -188,9 +189,9 @@ impl IGenericQueryParser for Madara {
     }
 
     async fn images_from_url(&self, url: &Url) -> Result<Vec<Url>> {
-        let hostname = &url.domain().unwrap();
+        let hostname = util::get_hostname(url).unwrap();
 
-        if AJAX_IMAGES.contains(hostname) {
+        if AJAX_IMAGES.contains(&hostname.as_str()) {
             let chapter_id = {
                 let doc = self.get_document_from_url(url).await?.1 .0;
                 let element = util::select_first(&doc, "script:contains(chapter_id)")
@@ -225,6 +226,19 @@ impl IGenericQueryParser for Madara {
         } else {
             self.parser.images_from_url(url).await
         }
+    }
+
+    fn get_images(&self, (doc, loc): DocLoc) -> Result<Vec<Url>> {
+        if let Some(element) = util::select_first(&doc, "#arraydata") {
+            let images = element.text().ok_or(ParseError::MissingImages)?;
+
+            return images
+                .split(",")
+                .map(|url| Url::parse(url).map_err(|_| ParseError::MissingImages))
+                .collect::<core::result::Result<Vec<Url>, ParseError>>();
+        }
+
+        self.parser.get_images((doc, loc))
     }
 
     fn parse_search_url(&self, hostname: &str, keywords: &str, path: &str) -> Result<Url> {

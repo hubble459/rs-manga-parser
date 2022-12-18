@@ -1,14 +1,11 @@
 extern crate manga_parser;
 
 use chrono::{DateTime, Duration, Months, Utc};
+use manga_parser::model::Manga;
+use manga_parser::parse_error::{ParseError, Result};
+use manga_parser::parser::{MangaParser, Parser};
+use manga_parser::util;
 use reqwest::Url;
-
-use manga_parser::{
-    model::Manga,
-    parse_error::{ParseError, Result},
-    parser::{MangaParser, Parser},
-    util,
-};
 
 #[macro_use]
 extern crate log;
@@ -63,7 +60,7 @@ macro_rules! manga_tests {
                                 },
                                 _ => {
                                     error!("[{}]: {}", hostname, e.to_string());
-                                    assert!(false);
+                                    assert!(false, "[{}]: {}", hostname, e.to_string());
                                 },
                             }
                             return;
@@ -120,7 +117,7 @@ manga_tests! {
 
     manga_kakalot: "https://mangakakalot.com/manga/youkai_gakkou_no_sensei_hajimemashita";
     manga_bat_com: "https://h.mangabat.com/read-tj397750";
-    manga_bat_best: "http://mangabat.best/manga/worthless-regression", 0b0101;
+    manga_bat_best: "http://mangabat.best/manga/marriage-and-sword", 0;
 }
 
 #[tokio::test]
@@ -157,10 +154,18 @@ async fn assert_manga(manga: Manga, strictness: u8) {
     for chapter in manga.chapters.iter() {
         assert!(chapter.url.has_host(), "Chapter url is missing host");
         let url = chapter.url.to_string();
-        assert!(!unique_urls.contains(&url), "Duplicate chapter url ({})", url);
+        assert!(
+            !unique_urls.contains(&url),
+            "Duplicate chapter url ({})",
+            url
+        );
         unique_urls.push(url);
         if strictness & 0b1000 == 0b1000 {
-            assert!(chapter.posted.is_some(), "Chapter {} is missing a posted date", chapter.number);
+            assert!(
+                chapter.posted.is_some(),
+                "Chapter {} is missing a posted date",
+                chapter.number
+            );
         }
     }
 
@@ -203,7 +208,8 @@ fn date_parse() {
     let date = manga_parser::util::try_parse_date("Last week");
     compare_without_time(&(now - Duration::weeks(1)), date);
 
-    let date = manga_parser::util::try_parse_date(&now.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string());
+    let date =
+        manga_parser::util::try_parse_date(&now.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string());
     compare_without_time(&now, date);
 
     let date = manga_parser::util::try_parse_date(&now.to_rfc3339());

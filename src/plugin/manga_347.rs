@@ -18,8 +18,8 @@ impl Manga347 {
             manga: GenericQueryManga {
                 title: "h1.manga-name",
                 description: Some("div.description"),
-                cover: Some("#primaryimage"),
-                cover_attrs: Some(vec!["data-src"]),
+                cover: Some("meta[property=og:image], #primaryimage"),
+                cover_attrs: Some(vec!["content", "data-src"]),
                 is_ongoing: Some("span.item-head:icontains(status) + span"),
                 alt_titles: Some("div.manga-name-or"),
                 chapter: GenericQueryMangaChapter {
